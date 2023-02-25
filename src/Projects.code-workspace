@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"name": "DHT11_Temperature",
+			"path": ".."
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"algorithm": "cpp",
+			"charconv": "cpp",
+			"functional": "cpp",
+			"xstring": "cpp",
+			"xutility": "cpp",
+			"*.tcc": "cpp"
+		}
+	}
+}
