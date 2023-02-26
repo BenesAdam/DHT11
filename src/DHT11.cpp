@@ -1,6 +1,26 @@
 #include "DHT11.hpp"
 
 //********************************************************************
+// Defines
+//********************************************************************
+#define EXIT_ON_FAIL(condition) \
+  if (!(condition))             \
+  {                             \
+    return false;               \
+  }
+
+#define EXIT_ON_TIMEOUT(condition, ...) \
+  if ((condition) == TIMEOUT)           \
+  {                                     \
+    DHT_PRINT_DEBUG(__VA_ARGS__)        \
+    return false;                       \
+  }
+
+//********************************************************************
+// Methods implementations
+//********************************************************************
+
+//********************************************************************
 //
 //! Constructor
 //
@@ -50,7 +70,7 @@ float cDHT11::GetTemperature() const
 //********************************************************************
 bool cDHT11::LoadData()
 {
-  areDataOkey = ExecuteLoadProcedure();
+  areDataOkey = ExecuteLoadingProcedure();
   return areDataOkey;
 }
 
@@ -59,30 +79,18 @@ bool cDHT11::LoadData()
 //! Do actual data loading procedure
 //
 //********************************************************************
-bool cDHT11::ExecuteLoadProcedure()
+bool cDHT11::ExecuteLoadingProcedure()
 {
-  SendStartSignal();
-
-  if (!WaitForStartSending())
-  {
-    return false;
-  }
-
   uint8_t rawData[cDHT11::RawDataSize];
-  ReceiveRawData(rawData);
-  if (!ProcessRawData(rawData))
-  {
-    return false;
-  }
+  uint8_t data[cDHT11::DataSize];
 
-  PrintReceivedData();
-
-  if (!EvaluateChecksum())
-  {
-    return false;
-  }
-
-  ProcessData();
+  /*        */ SendStartSignal();
+  EXIT_ON_FAIL(WaitForStartSending());
+  /*        */ ReceiveRawData(rawData);
+  EXIT_ON_FAIL(ProcessRawData(rawData, data));
+  /*        */ PrintReceivedData(data);
+  EXIT_ON_FAIL(EvaluateChecksum(data));
+  /*        */ ProcessData(data);
 
   return true;
 }
@@ -111,23 +119,9 @@ void cDHT11::SendStartSignal()
 //********************************************************************
 bool cDHT11::WaitForStartSending()
 {
-  if (ExpectLevel(LOW) == TIMEOUT)
-  {
-    DHT_PRINT_DEBUG("Response signal (LOW) not arrived.\n");
-    return false;
-  }
-
-  if (ExpectLevel(HIGH) == TIMEOUT)
-  {
-    DHT_PRINT_DEBUG("Pull up from DHT11 not presented.\n");
-    return false;
-  }
-
-  if (ExpectLevel(LOW) == TIMEOUT)
-  {
-    DHT_PRINT_DEBUG("Communication not started.\n");
-    return false;
-  }
+  EXIT_ON_TIMEOUT(ExpectLevel(LOW), "Response signal (LOW) not arrived.\n");
+  EXIT_ON_TIMEOUT(ExpectLevel(HIGH), "Pull up from DHT11 not presented.\n");
+  EXIT_ON_TIMEOUT(ExpectLevel(LOW), "Communication not started.\n");
 
   return true;
 }
@@ -178,7 +172,7 @@ void cDHT11::ReceiveRawData(uint8_t rawData[cDHT11::RawDataSize])
 //!   5. byte: checksum (last byte of sum of all previous bytes)
 //
 //********************************************************************
-bool cDHT11::ProcessRawData(uint8_t rawData[cDHT11::RawDataSize])
+bool cDHT11::ProcessRawData(uint8_t rawData[cDHT11::RawDataSize], uint8_t data[cDHT11::DataSize])
 {
   uint8_t bitIndex = 0U;
 
@@ -196,17 +190,8 @@ bool cDHT11::ProcessRawData(uint8_t rawData[cDHT11::RawDataSize])
       const uint8_t dataBitLength = rawData[bitIndex + 1U];
 
       // Check bits
-      if (startBitLength == TIMEOUT)
-      {
-        DHT_PRINT_DEBUG("Start bit timeout.\n");
-        return false;
-      }
-
-      if (dataBitLength == TIMEOUT)
-      {
-        DHT_PRINT_DEBUG("Data bit timeout.\n");
-        return false;
-      }
+      EXIT_ON_TIMEOUT(startBitLength, "Start bit timeout.\n");
+      EXIT_ON_TIMEOUT(dataBitLength, "Data bit timeout.\n");
 
       // Append bit to actual byte
       actualByte <<= 1U;
@@ -227,7 +212,7 @@ bool cDHT11::ProcessRawData(uint8_t rawData[cDHT11::RawDataSize])
 //! Debug printing of received data
 //
 //********************************************************************
-void cDHT11::PrintReceivedData()
+void cDHT11::PrintReceivedData(uint8_t data[cDHT11::DataSize])
 {
   DHT_PRINT_DEBUG("Recieved data:\n");
   for (uint8_t i = 0U; i < cDHT11::DataSize; i++)
@@ -242,7 +227,7 @@ void cDHT11::PrintReceivedData()
 //! reveived checksum
 //
 //********************************************************************
-bool cDHT11::EvaluateChecksum()
+bool cDHT11::EvaluateChecksum(uint8_t data[cDHT11::DataSize])
 {
   uint16_t fullChecksum = 0U;
   for (uint8_t i = 0U; i < cDHT11::DataSize - 1U; i++)
@@ -264,7 +249,7 @@ bool cDHT11::EvaluateChecksum()
 //! Calculate and store humidity and temperature from received data
 //
 //********************************************************************
-void cDHT11::ProcessData()
+void cDHT11::ProcessData(uint8_t data[cDHT11::DataSize])
 {
   // Process humidity data
   humidity = data[HUMIDITY_INTEGRAL] + (data[HUMIDITY_DECIMAL] * 0.1F);

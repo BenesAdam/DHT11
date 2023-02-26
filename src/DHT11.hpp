@@ -12,7 +12,7 @@
 // #define DHT_DEBUG 1
 
 #if defined(DHT_DEBUG) && DHT_DEBUG == 1
-#define DHT_PRINT_DEBUG(...) Serial.printf(__VA_ARGS__)
+#define DHT_PRINT_DEBUG(...) Serial.printf(__VA_ARGS__);
 #else
 #define DHT_PRINT_DEBUG(...)
 #endif
@@ -60,7 +60,6 @@ private:
   //------------------------------------------------------------------
   //--- Attributes ---------------------------------------------------
   //------------------------------------------------------------------
-  uint8_t data[cDHT11::DataSize];
   bool areDataOkey;
   float humidity;
   float temperature;
@@ -68,15 +67,15 @@ private:
   //------------------------------------------------------------------
   //--- Private methods ----------------------------------------------
   //------------------------------------------------------------------
-  bool ExecuteLoadProcedure();
+  bool ExecuteLoadingProcedure();
   void SendStartSignal();
   bool WaitForStartSending();
   uint32_t ExpectLevel(const uint8_t level);
   void ReceiveRawData(uint8_t rawData[80U]);
-  bool ProcessRawData(uint8_t rawData[80U]);
-  void PrintReceivedData();
-  bool EvaluateChecksum();
-  void ProcessData();
+  bool ProcessRawData(uint8_t rawData[80U], uint8_t data[cDHT11::DataSize]);
+  void PrintReceivedData(uint8_t data[cDHT11::DataSize]);
+  bool EvaluateChecksum(uint8_t data[cDHT11::DataSize]);
+  void ProcessData(uint8_t data[cDHT11::DataSize]);
 };
 
 #endif // DHT_HPP
